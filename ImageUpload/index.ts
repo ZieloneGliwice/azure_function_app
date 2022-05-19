@@ -4,8 +4,10 @@ import { getBoundary, parse } from "parse-multipart-data";
 import * as sharp from "sharp";
 import imageType from "image-type";
 import { v4 as uuidv4 } from "uuid";
-// import * as exif from "exif-js";
-// import { Blob } from "node:buffer"
+import * as exif from "exif-js";
+import { Blob } from "node:buffer"
+
+global.Blob = Blob as any;
 
 const httpTrigger: AzureFunction = async function (
   context: Context,
@@ -33,8 +35,6 @@ const httpTrigger: AzureFunction = async function (
     const imageTypeInfo = imageType(imageInput.data);
     const imageBlobStorageName = `${uuidv4()}.${imageTypeInfo.ext}`
 
-    // const meta = exif.readFromBinaryFile(image.data.buffer);
-
     const thumbnail = await sharp(imageInput.data)
       .resize(200, 200)
       .withMetadata()
@@ -59,10 +59,28 @@ const httpTrigger: AzureFunction = async function (
       blobHTTPHeaders: { blobContentType: imageTypeInfo.mime },
     });
 
-    context.bindings.cosmosDbRes = JSON.stringify({
+    const imageMetadata = exif.readFromBinaryFile(imageInput.data.buffer);
+    
+    const latitudeDMS = imageMetadata.GPSLatitude;
+    const latitudeDirection = imageMetadata.GPSLatitudeRef;
+    const longitudeDMS = imageMetadata.GPSLongitude;
+    const longitudeDirection = imageMetadata.GPSLongitudeRef;
+
+    const latitude = latitudeDMS?.length === 3 && ["N", "S"].includes(latitudeDirection)
+      ? dmsToDD(latitudeDMS[0], latitudeDMS[1], latitudeDMS[2], latitudeDirection)
+      : undefined;
+    const longitude = longitudeDMS?.length === 3 && ["E", "W"].includes(longitudeDirection)
+      ? dmsToDD(longitudeDMS[0], longitudeDMS[1], longitudeDMS[2], longitudeDirection)
+      : undefined;
+    
+      context.bindings.cosmosDbRes = JSON.stringify({
       imageUrl: imageBlobClient.url,
       thumbnailUrl: thumbnailBlobClient.url,
       userId: Buffer.from(parts[1].data).toString(),
+      gpsCoordinates: {
+        latitude,
+        longitude
+      }
     });
 
     context.log("HTTP trigger function processed a request.");
@@ -75,11 +93,21 @@ const httpTrigger: AzureFunction = async function (
 
 export default httpTrigger;
 
-function endWithBadResponse(context, message = "Bad Request") {
+const endWithBadResponse = (context, message = "Bad Request") => {
   context.log.error(message);
   context.res = {
     status: 400,
     body: message,
   };
   context.done();
+}
+
+const dmsToDD = (degrees: number, minutes: number, seconds: number, direction: string) => {
+  var dd = degrees + minutes / 60 + seconds / (60 * 60);
+
+  if (direction === "S" || direction === "W") {
+      dd = -dd;
+  }
+  
+  return dd;
 }
