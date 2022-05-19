@@ -1,0 +1,27 @@
+{
+  "bindings": [
+    {
+      "authLevel": "function",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": ["post"]
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "res"
+    },
+    {
+      "name": "cosmosDbRes",
+      "type": "cosmosDB",
+      "databaseName": "GreenGliwice",
+      "collectionName": "Trees",
+      "createIfNotExists": true,
+      "partitionKey": "/userId",
+      "connectionStringSetting": "CosmosDbConnectionString",
+      "direction": "out"
+    }
+  ],
+  "scriptFile": "../dist/ImageUpload/index.js"
+}
