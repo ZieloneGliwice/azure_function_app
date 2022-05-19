@@ -2,7 +2,9 @@ import { AzureFunction, Context, HttpRequest } from "@azure/functions";
 import { BlobServiceClient } from "@azure/storage-blob";
 import { getBoundary, parse } from "parse-multipart-data";
 import * as sharp from "sharp";
-// import * as exifjs from "exif-js";
+import imageType from "image-type";
+import { v4 as uuidv4 } from "uuid";
+// import * as exif from "exif-js";
 // import { Blob } from "node:buffer"
 
 const httpTrigger: AzureFunction = async function (
@@ -27,9 +29,11 @@ const httpTrigger: AzureFunction = async function (
       return endWithBadResponse(context);
     }
 
-    // const meta = exifjs.readFromBinaryFile(parts[0].data.buffer);
-
     const image = parts[0];
+    const imageTypeInfo = imageType(image.data);
+    const imageBlobStorageName = `${uuidv4()}.${imageTypeInfo.ext}`
+
+    // const meta = exif.readFromBinaryFile(image.data.buffer);
 
     const thumbnail = await sharp(image.data).resize(200, 200).withMetadata().toBuffer();
 
@@ -40,32 +44,21 @@ const httpTrigger: AzureFunction = async function (
     const containerClient = blobServiceClient.getContainerClient("images");
     await containerClient.createIfNotExists();
 
-    const imageBlobClient = containerClient.getBlockBlobClient(image.filename);
-    const uploadImageResponse = await imageBlobClient.uploadData(image.data, {
-      blobHTTPHeaders: { blobContentType: image.type },
+    const imageBlobClient = containerClient.getBlockBlobClient(
+      imageBlobStorageName
+    );
+    await imageBlobClient.uploadData(parts[0].data, {
+      blobHTTPHeaders: { blobContentType: imageTypeInfo.mime },
     });
 
-    const thumbnailBlobClient = containerClient.getBlockBlobClient(`thumbnail-${image.filename}`);
-    const uploadThumbnailResponse = await thumbnailBlobClient.uploadData(thumbnail, {
-      blobHTTPHeaders: { blobContentType: image.type },
+    const thumbnailBlobClient = containerClient.getBlockBlobClient(`thumbnail-${imageBlobStorageName}`);
+    await thumbnailBlobClient.uploadData(thumbnail, {
+      blobHTTPHeaders: { blobContentType: imageTypeInfo.mime },
     });
 
     context.bindings.cosmosDbRes = JSON.stringify({
       imageUrl: imageBlobClient.url,
       thumbnailUrl: thumbnailBlobClient.url,
-      userId: "test-user-id",
-    });
-
-    const blockBlobClient = containerClient.getBlockBlobClient(
-      parts[0].filename
-    );
-
-    await blockBlobClient.uploadData(parts[0].data, {
-      blobHTTPHeaders: { blobContentType: parts[0].type },
-    });
-
-    context.bindings.cosmosDbRes = JSON.stringify({
-      imageUrl: blockBlobClient.url,
       userId: Buffer.from(parts[1].data).toString(),
     });
 
