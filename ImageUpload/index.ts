@@ -1,6 +1,8 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
 import { BlobServiceClient } from "@azure/storage-blob";
 import { getBoundary, parse } from "parse-multipart-data";
+// import * as exifjs from "exif-js";
+// import { Blob } from "node:buffer"
 
 const httpTrigger: AzureFunction = async function (
   context: Context,
@@ -9,6 +11,8 @@ const httpTrigger: AzureFunction = async function (
   const bodyBuffer = Buffer.from(req.body);
   const boundary = getBoundary(req.headers["content-type"]);
   const parts = parse(bodyBuffer, boundary);
+
+  // const meta = exifjs.readFromBinaryFile(parts[0].data.buffer);
 
   var blobServiceClient = BlobServiceClient.fromConnectionString(
     process.env.BlobStorageConnectionString
