@@ -29,13 +29,16 @@ const httpTrigger: AzureFunction = async function (
       return endWithBadResponse(context);
     }
 
-    const image = parts[0];
-    const imageTypeInfo = imageType(image.data);
+    const imageInput = parts[0];
+    const imageTypeInfo = imageType(imageInput.data);
     const imageBlobStorageName = `${uuidv4()}.${imageTypeInfo.ext}`
 
     // const meta = exif.readFromBinaryFile(image.data.buffer);
 
-    const thumbnail = await sharp(image.data).resize(200, 200).withMetadata().toBuffer();
+    const thumbnail = await sharp(imageInput.data)
+      .resize(200, 200)
+      .withMetadata()
+      .toBuffer();
 
     const blobServiceClient = BlobServiceClient.fromConnectionString(
       process.env.BlobStorageConnectionString
