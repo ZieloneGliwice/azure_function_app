@@ -8,39 +8,61 @@ const httpTrigger: AzureFunction = async function (
   context: Context,
   req: HttpRequest
 ): Promise<void> {
-  const bodyBuffer = Buffer.from(req.body);
-  const boundary = getBoundary(req.headers["content-type"]);
-  const parts = parse(bodyBuffer, boundary);
+  try {
+    if (!req.body) {
+      return endWithBadResponse(context);
+    }
 
-  // const meta = exifjs.readFromBinaryFile(parts[0].data.buffer);
+    const parts = parse(
+      Buffer.from(req.body),
+      getBoundary(req.headers["content-type"])
+    );
 
-  var blobServiceClient = BlobServiceClient.fromConnectionString(
-    process.env.BlobStorageConnectionString
-  );
+    if (
+      parts.length !== 2 ||
+      !parts[0].filename ||
+      parts[1].name !== "userId"
+    ) {
+      return endWithBadResponse(context);
+    }
 
-  const containerClient = blobServiceClient.getContainerClient("images");
-  await containerClient.createIfNotExists();
+    // const meta = exifjs.readFromBinaryFile(parts[0].data.buffer);
 
-  const blockBlobClient = containerClient.getBlockBlobClient(parts[0].filename);
-  const response = await blockBlobClient.uploadData(parts[0].data, {
-    blobHTTPHeaders: { blobContentType: parts[0].type },
-  });
+    var blobServiceClient = BlobServiceClient.fromConnectionString(
+      process.env.BlobStorageConnectionString
+    );
 
-  context.bindings.cosmosDbRes = JSON.stringify({
-    imageUrl: blockBlobClient.url,
-    userId: "test-user-id",
-  });
+    const containerClient = blobServiceClient.getContainerClient("images");
+    await containerClient.createIfNotExists();
 
-  context.log("HTTP trigger function processed a request.");
-  const name = req.query.name || (req.body && req.body.name);
-  const responseMessage = name
-    ? "Hello, " + name + ". This HTTP triggered function executed successfully."
-    : "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response.";
+    const blockBlobClient = containerClient.getBlockBlobClient(
+      parts[0].filename
+    );
 
-  context.res = {
-    // status: 200, /* Defaults to 200 */
-    body: responseMessage,
-  };
+    await blockBlobClient.uploadData(parts[0].data, {
+      blobHTTPHeaders: { blobContentType: parts[0].type },
+    });
+
+    context.bindings.cosmosDbRes = JSON.stringify({
+      imageUrl: blockBlobClient.url,
+      userId: Buffer.from(parts[1].data).toString(),
+    });
+
+    context.log("HTTP trigger function processed a request.");
+    context.done();
+  } catch (error) {
+    context.log.error(error.message);
+    throw error;
+  }
 };
 
 export default httpTrigger;
+
+function endWithBadResponse(context, message = "Bad Request") {
+  context.log.error(message);
+  context.res = {
+    status: 400,
+    body: message,
+  };
+  context.done();
+}
