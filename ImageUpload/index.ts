@@ -73,7 +73,7 @@ const httpTrigger: AzureFunction = async function (
       ? dmsToDD(longitudeDMS[0], longitudeDMS[1], longitudeDMS[2], longitudeDirection)
       : undefined;
     
-      context.bindings.cosmosDbRes = JSON.stringify({
+    context.bindings.cosmosDbRes = JSON.stringify({
       imageUrl: imageBlobClient.url,
       thumbnailUrl: thumbnailBlobClient.url,
       userId: Buffer.from(parts[1].data).toString(),
