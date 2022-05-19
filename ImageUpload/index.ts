@@ -9,10 +9,10 @@ import { Blob } from "node:buffer"
 
 global.Blob = Blob as any;
 
-const httpTrigger: AzureFunction = async function (
+const httpTrigger: AzureFunction = async (
   context: Context,
   req: HttpRequest
-): Promise<void> {
+): Promise<void> => {
   try {
     if (!req.body) {
       return endWithBadResponse(context);
