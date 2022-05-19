@@ -1,9 +1,10 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
 import { BlobServiceClient } from "@azure/storage-blob";
 import { getBoundary, parse } from "parse-multipart-data";
+import * as sharp from "sharp";
 import imageType from "image-type";
 import { v4 as uuidv4 } from "uuid";
-// import * as exifjs from "exif-js";
+// import * as exif from "exif-js";
 // import { Blob } from "node:buffer"
 
 const httpTrigger: AzureFunction = async function (
@@ -28,27 +29,39 @@ const httpTrigger: AzureFunction = async function (
       return endWithBadResponse(context);
     }
 
-    const imageTypeInfo = imageType(parts[0].data);
+    const imageInput = parts[0];
+    const imageTypeInfo = imageType(imageInput.data);
+    const imageBlobStorageName = `${uuidv4()}.${imageTypeInfo.ext}`
 
-    // const meta = exifjs.readFromBinaryFile(parts[0].data.buffer);
+    // const meta = exif.readFromBinaryFile(image.data.buffer);
 
-    var blobServiceClient = BlobServiceClient.fromConnectionString(
+    const thumbnail = await sharp(imageInput.data)
+      .resize(200, 200)
+      .withMetadata()
+      .toBuffer();
+
+    const blobServiceClient = BlobServiceClient.fromConnectionString(
       process.env.BlobStorageConnectionString
     );
 
     const containerClient = blobServiceClient.getContainerClient("images");
     await containerClient.createIfNotExists();
 
-    const blockBlobClient = containerClient.getBlockBlobClient(
-      `${uuidv4()}.${imageTypeInfo.ext}`
+    const imageBlobClient = containerClient.getBlockBlobClient(
+      imageBlobStorageName
     );
+    await imageBlobClient.uploadData(parts[0].data, {
+      blobHTTPHeaders: { blobContentType: imageTypeInfo.mime },
+    });
 
-    await blockBlobClient.uploadData(parts[0].data, {
+    const thumbnailBlobClient = containerClient.getBlockBlobClient(`thumbnail-${imageBlobStorageName}`);
+    await thumbnailBlobClient.uploadData(thumbnail, {
       blobHTTPHeaders: { blobContentType: imageTypeInfo.mime },
     });
 
     context.bindings.cosmosDbRes = JSON.stringify({
-      imageUrl: blockBlobClient.url,
+      imageUrl: imageBlobClient.url,
+      thumbnailUrl: thumbnailBlobClient.url,
       userId: Buffer.from(parts[1].data).toString(),
     });
 
