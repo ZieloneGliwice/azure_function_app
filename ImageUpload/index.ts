@@ -1,6 +1,7 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
 import { BlobServiceClient } from "@azure/storage-blob";
 import { getBoundary, parse } from "parse-multipart-data";
+import * as sharp from "sharp";
 // import * as exifjs from "exif-js";
 // import { Blob } from "node:buffer"
 
@@ -11,6 +12,9 @@ const httpTrigger: AzureFunction = async function (
   const bodyBuffer = Buffer.from(req.body);
   const boundary = getBoundary(req.headers["content-type"]);
   const parts = parse(bodyBuffer, boundary);
+  const image = parts[0];
+
+  const thumbnail = await sharp(image.data).resize(200, 200).withMetadata().toBuffer();
 
   // const meta = exifjs.readFromBinaryFile(parts[0].data.buffer);
 
@@ -21,13 +25,19 @@ const httpTrigger: AzureFunction = async function (
   const containerClient = blobServiceClient.getContainerClient("images");
   await containerClient.createIfNotExists();
 
-  const blockBlobClient = containerClient.getBlockBlobClient(parts[0].filename);
-  const response = await blockBlobClient.uploadData(parts[0].data, {
-    blobHTTPHeaders: { blobContentType: parts[0].type },
+  const imageBlobClient = containerClient.getBlockBlobClient(image.filename);
+  const uploadImageResponse = await imageBlobClient.uploadData(image.data, {
+    blobHTTPHeaders: { blobContentType: image.type },
+  });
+
+  const thumbnailBlobClient = containerClient.getBlockBlobClient(`thumbnail-${image.filename}`);
+  const uploadThumbnailResponse = await thumbnailBlobClient.uploadData(thumbnail, {
+    blobHTTPHeaders: { blobContentType: image.type },
   });
 
   context.bindings.cosmosDbRes = JSON.stringify({
-    imageUrl: blockBlobClient.url,
+    imageUrl: imageBlobClient.url,
+    thumbnailUrl: thumbnailBlobClient.url,
     userId: "test-user-id",
   });
 
