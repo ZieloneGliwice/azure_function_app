@@ -1,6 +1,8 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
 import { BlobServiceClient } from "@azure/storage-blob";
 import { getBoundary, parse } from "parse-multipart-data";
+import imageType from "image-type";
+import { v4 as uuidv4 } from "uuid";
 // import * as exifjs from "exif-js";
 // import { Blob } from "node:buffer"
 
@@ -26,6 +28,8 @@ const httpTrigger: AzureFunction = async function (
       return endWithBadResponse(context);
     }
 
+    const imageTypeInfo = imageType(parts[0].data);
+
     // const meta = exifjs.readFromBinaryFile(parts[0].data.buffer);
 
     var blobServiceClient = BlobServiceClient.fromConnectionString(
@@ -36,11 +40,11 @@ const httpTrigger: AzureFunction = async function (
     await containerClient.createIfNotExists();
 
     const blockBlobClient = containerClient.getBlockBlobClient(
-      parts[0].filename
+      `${uuidv4()}.${imageTypeInfo.ext}`
     );
 
     await blockBlobClient.uploadData(parts[0].data, {
-      blobHTTPHeaders: { blobContentType: parts[0].type },
+      blobHTTPHeaders: { blobContentType: imageTypeInfo.mime },
     });
 
     context.bindings.cosmosDbRes = JSON.stringify({
