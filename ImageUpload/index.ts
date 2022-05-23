@@ -17,7 +17,7 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
 
     const parts = parse(Buffer.from(req.body), getBoundary(req.headers["content-type"]));
 
-    if (parts.length !== 2 || !parts[0].filename || parts[1].name !== "userId") {
+    if (parts.length !== 1 || !parts[0].filename) {
       return endWithBadResponse(context);
     }
 
@@ -61,7 +61,7 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
     context.bindings.cosmosDbRes = JSON.stringify({
       imageUrl: imageBlobClient.url,
       thumbnailUrl: thumbnailBlobClient.url,
-      userId: Buffer.from(parts[1].data).toString(),
+      userId: context.req.headers["x-ms-client-principal-id"],
       gpsCoordinates: {
         latitude,
         longitude,
