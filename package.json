@@ -11,6 +11,7 @@
     "prettier": "prettier -w ."
   },
   "dependencies": {
+    "@azure/cosmos": "^3.16.1",
     "@azure/storage-blob": "^12.10.0",
     "exif-js": "^2.3.0",
     "image-type": "^4.1.0",
