@@ -1,11 +1,12 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import { BlobServiceClient } from "@azure/storage-blob";
+import { BlobServiceClient, ContainerClient, StorageSharedKeyCredential } from "@azure/storage-blob";
 import { getBoundary, parse } from "parse-multipart-data";
 import * as sharp from "sharp";
 import imageType from "image-type";
 import { v4 as uuidv4 } from "uuid";
 import * as exif from "exif-js";
 import { Blob } from "node:buffer";
+import { testUserId } from "../common";
 
 global.Blob = Blob as any;
 
@@ -27,9 +28,11 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
 
     const thumbnail = await sharp(imageInput.data).resize(200, 200).withMetadata().toBuffer();
 
-    const blobServiceClient = BlobServiceClient.fromConnectionString(process.env.BlobStorageConnectionString);
+    const containerClient = new ContainerClient(
+      `${process.env.BlobUrl}/images`,
+      new StorageSharedKeyCredential(process.env.BlobAccountName, process.env.BlobAccountKey),
+    );
 
-    const containerClient = blobServiceClient.getContainerClient("images");
     await containerClient.createIfNotExists();
 
     const imageBlobClient = containerClient.getBlockBlobClient(imageBlobStorageName);
@@ -61,7 +64,7 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
     context.bindings.cosmosDbRes = JSON.stringify({
       imageUrl: imageBlobClient.url,
       thumbnailUrl: thumbnailBlobClient.url,
-      userId: context.req.headers["x-ms-client-principal-id"],
+      userId: process.env.Environment === "Development" ? testUserId : context.req.headers["x-ms-client-principal-id"],
       gpsCoordinates: {
         latitude,
         longitude,
