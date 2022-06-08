@@ -1,6 +1,6 @@
 import { CosmosClient } from "@azure/cosmos";
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import { getBlobSasUri, testUserId } from "../common";
+import { getContainerSasUri, testUserId } from "../common";
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
   const client = new CosmosClient(process.env.CosmosDbConnectionString);
@@ -21,9 +21,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
   const { resources } = await container.items.query(querySpec).fetchAll();
 
   context.res = {
-    body: resources.map((item) => {
-      return { ...item, thumbnailUrl: getBlobSasUri(item.thumbnailUrl) };
-    }),
+    body: { trees: resources, sasToken: resources.length > 0 ? getContainerSasUri() : undefined },
   };
 };
 export default httpTrigger;
