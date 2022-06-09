@@ -1,8 +1,8 @@
 import { CosmosClient } from "@azure/cosmos";
-import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import { getBlobSasUri, testUserId } from "../common";
+import { AzureFunction, Context } from "@azure/functions";
+import { getContainerSasUri, getUserId } from "../common";
 
-const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
+const httpTrigger: AzureFunction = async function (context: Context): Promise<void> {
   const client = new CosmosClient(process.env.CosmosDbConnectionString);
   const container = client.database("GreenGliwice").container("Trees");
 
@@ -13,7 +13,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
     parameters: [
       {
         name: "@userId",
-        value: process.env.Environment === "Development" ? testUserId : context.req.headers["x-ms-client-principal-id"],
+        value: getUserId(context),
       },
     ],
   };
@@ -21,9 +21,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
   const { resources } = await container.items.query(querySpec).fetchAll();
 
   context.res = {
-    body: resources.map((item) => {
-      return { ...item, thumbnailUrl: getBlobSasUri(item.thumbnailUrl) };
-    }),
+    body: { trees: resources, sasToken: resources.length > 0 ? getContainerSasUri() : undefined },
   };
 };
 export default httpTrigger;
