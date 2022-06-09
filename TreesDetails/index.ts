@@ -1,6 +1,6 @@
 import { CosmosClient } from "@azure/cosmos";
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import { getContainerSasUri, getUserId } from "../common";
+import { endWithNotFoundResponse, getContainerSasUri, getUserId } from "../common";
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
   const client = new CosmosClient(process.env.CosmosDbConnectionString);
@@ -34,12 +34,3 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
   };
 };
 export default httpTrigger;
-
-const endWithNotFoundResponse = (context: Context, message = "Not Found") => {
-  context.log.error(message);
-  context.res = {
-    status: 404,
-    body: message,
-  };
-  context.done();
-};

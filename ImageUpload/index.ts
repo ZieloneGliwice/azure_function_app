@@ -6,7 +6,7 @@ import imageType from "image-type";
 import { v4 as uuidv4 } from "uuid";
 import * as exif from "exif-js";
 import { Blob } from "node:buffer";
-import { getUserId } from "../common";
+import { endWithBadResponse, getUserId } from "../common";
 
 global.Blob = Blob as any;
 
@@ -80,15 +80,6 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
 };
 
 export default httpTrigger;
-
-const endWithBadResponse = (context, message = "Bad Request") => {
-  context.log.error(message);
-  context.res = {
-    status: 400,
-    body: message,
-  };
-  context.done();
-};
 
 const dmsToDD = (degrees: number, minutes: number, seconds: number, direction: string) => {
   var dd = degrees + minutes / 60 + seconds / (60 * 60);

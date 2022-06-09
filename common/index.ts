@@ -24,3 +24,21 @@ export const getContainerSasUri = () => {
 export const getUserId = (context: Context) => {
   return process.env.Environment === "Development" ? testUserId : context.req.headers["x-ms-client-principal-id"];
 };
+
+export const endWithBadResponse = (context, message = "Bad Request") => {
+  context.log.error(message);
+  context.res = {
+    status: 400,
+    body: message,
+  };
+  context.done();
+};
+
+export const endWithNotFoundResponse = (context: Context, message = "Not Found") => {
+  context.log.error(message);
+  context.res = {
+    status: 404,
+    body: message,
+  };
+  context.done();
+};

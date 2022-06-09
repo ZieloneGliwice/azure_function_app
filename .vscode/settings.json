@@ -7,5 +7,5 @@
   "azureFunctions.preDeployTask": "npm prune (functions)",
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,
-  "cSpell.words": ["exif", "prestart", "uuidv"]
+  "cSpell.words": ["exif", "inne", "klon", "prestart", "sosna", "uuidv", "wiem", "wierzba", "zdrowe"]
 }
