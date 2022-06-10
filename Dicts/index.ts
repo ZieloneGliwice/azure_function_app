@@ -11,6 +11,8 @@ interface DictItemDefinition {
   name: string;
 }
 
+const containerName = "Dicts";
+
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
   const client = new CosmosClient(process.env.CosmosDbConnectionString);
   const database = client.database("GreenGliwice");
@@ -19,15 +21,15 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
     return endWithBadResponse(context);
   }
 
-  const containersCreationResponse = await database.containers.createIfNotExists({
-    id: "Dicts",
+  const containerResponse = await database.containers.createIfNotExists({
+    id: containerName,
     partitionKey: "/type",
     uniqueKeyPolicy: { uniqueKeys: [{ paths: ["/name"] }] },
   });
 
-  const container = database.container("Dicts");
+  const container = database.container(containerName);
 
-  if (containersCreationResponse.statusCode === 201) {
+  if (containerResponse.statusCode === 201) {
     const operations = createDictItemOperations("state", ["zdrowe", "chore", "inne", "nie wiem"]).concat(
       createDictItemOperations("species", ["sosna", "wierzba", "klon", "inne", "nie wiem"]),
     );
