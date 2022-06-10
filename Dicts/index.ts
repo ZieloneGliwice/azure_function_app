@@ -15,7 +15,7 @@ const containerName = "Dicts";
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
   const client = new CosmosClient(process.env.CosmosDbConnectionString);
-  const database = client.database("GreenGliwice");
+  const database = client.database(process.env.CosmosDbName);
 
   if (!dictTypeNames.includes(req.params.type as DictType)) {
     return endWithBadResponse(context);

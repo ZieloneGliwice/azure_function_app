@@ -4,7 +4,7 @@ import { getContainerSasUri, getUserId } from "../common";
 
 const httpTrigger: AzureFunction = async function (context: Context): Promise<void> {
   const client = new CosmosClient(process.env.CosmosDbConnectionString);
-  const container = client.database("GreenGliwice").container("Trees");
+  const container = client.database(process.env.CosmosDbName).container("Trees");
 
   const querySpec = {
     query: `SELECT t.id, t.thumbnailUrl

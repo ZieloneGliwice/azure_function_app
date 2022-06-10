@@ -4,7 +4,7 @@ import { endWithNotFoundResponse, getContainerSasUri, getUserId } from "../commo
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
   const client = new CosmosClient(process.env.CosmosDbConnectionString);
-  const container = client.database("GreenGliwice").container("Trees");
+  const container = client.database(process.env.CosmosDbName).container("Trees");
 
   const querySpec = {
     query: `SELECT t.imageUrl, t.gpsCoordinates
