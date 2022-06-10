@@ -1,12 +1,14 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import { ContainerClient, StorageSharedKeyCredential } from "@azure/storage-blob";
-import { getBoundary, parse } from "parse-multipart-data";
+import { BlockBlobClient, ContainerClient, StorageSharedKeyCredential } from "@azure/storage-blob";
 import * as sharp from "sharp";
 import imageType from "image-type";
 import { v4 as uuidv4 } from "uuid";
-import * as exif from "exif-js";
 import { Blob } from "node:buffer";
 import { endWithBadResponse, getUserId } from "../common";
+import parseMultipartFormData from "@anzp/azure-function-multipart";
+import { ParsedFile } from "@anzp/azure-function-multipart/dist/types/parsed-file.type";
+import { ParsedField } from "@anzp/azure-function-multipart/dist/types/parsed-field.type";
+import validator from "validator";
 
 global.Blob = Blob as any;
 
@@ -16,17 +18,15 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
       return endWithBadResponse(context);
     }
 
-    const parts = parse(Buffer.from(req.body), getBoundary(req.headers["content-type"]));
+    const { fields, files } = await parseMultipartFormData(req);
 
-    if (parts.length !== 1 || !parts[0].filename) {
+    if (!validateFiles(files)) {
       return endWithBadResponse(context);
     }
 
-    const imageInput = parts[0];
-    const imageTypeInfo = imageType(imageInput.data);
-    const imageBlobStorageName = `${uuidv4()}.${imageTypeInfo.ext}`;
-
-    const thumbnail = await sharp(imageInput.data).resize(200, 200).withMetadata().toBuffer();
+    if (!validateFields(fields)) {
+      return endWithBadResponse(context);
+    }
 
     const containerClient = new ContainerClient(
       `${process.env.BlobUrl}/images`,
@@ -35,40 +35,60 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
 
     await containerClient.createIfNotExists();
 
-    const imageBlobClient = containerClient.getBlockBlobClient(imageBlobStorageName);
-    await imageBlobClient.uploadData(parts[0].data, {
-      blobHTTPHeaders: { blobContentType: imageTypeInfo.mime },
+    // Tree image
+    const treeImageParsedFile = getItemByName(files, "tree");
+    const treeImageTypeInfo = imageType(treeImageParsedFile.bufferFile);
+    const treeImageBlobName = `${uuidv4()}.${treeImageTypeInfo.ext}`;
+
+    const treeImageBlobClient = containerClient.getBlockBlobClient(treeImageBlobName);
+    await treeImageBlobClient.uploadData(treeImageParsedFile.bufferFile, {
+      blobHTTPHeaders: { blobContentType: treeImageTypeInfo.mime },
     });
 
-    const thumbnailBlobClient = containerClient.getBlockBlobClient(`thumbnail-${imageBlobStorageName}`);
-    await thumbnailBlobClient.uploadData(thumbnail, {
-      blobHTTPHeaders: { blobContentType: imageTypeInfo.mime },
+    // Tree thumbnail image
+    const treeImageThumbnail = await sharp(treeImageParsedFile.bufferFile).resize(200, 200).withMetadata().toBuffer();
+    const treeImageThumbnailBlobName = `thumbnail-${treeImageBlobName}`;
+
+    const treeThumbnailBlobClient = containerClient.getBlockBlobClient(treeImageThumbnailBlobName);
+    await treeThumbnailBlobClient.uploadData(treeImageThumbnail, {
+      blobHTTPHeaders: { blobContentType: treeImageTypeInfo.mime },
     });
 
-    const imageMetadata = exif.readFromBinaryFile(imageInput.data.buffer);
+    // Leaf image
+    const leafImageParsedFile = getItemByName(files, "leaf");
+    const leafImageTypeInfo = imageType(leafImageParsedFile.bufferFile);
+    const leafImageBlobName = `${uuidv4()}.${leafImageTypeInfo.ext}`;
 
-    const latitudeDMS = imageMetadata.GPSLatitude;
-    const latitudeDirection = imageMetadata.GPSLatitudeRef;
-    const longitudeDMS = imageMetadata.GPSLongitude;
-    const longitudeDirection = imageMetadata.GPSLongitudeRef;
+    const leafImageBlobClient = containerClient.getBlockBlobClient(leafImageBlobName);
+    await leafImageBlobClient.uploadData(leafImageParsedFile.bufferFile, {
+      blobHTTPHeaders: { blobContentType: leafImageTypeInfo.mime },
+    });
 
-    const latitude =
-      latitudeDMS?.length === 3 && ["N", "S"].includes(latitudeDirection)
-        ? dmsToDD(latitudeDMS[0], latitudeDMS[1], latitudeDMS[2], latitudeDirection)
-        : undefined;
-    const longitude =
-      longitudeDMS?.length === 3 && ["E", "W"].includes(longitudeDirection)
-        ? dmsToDD(longitudeDMS[0], longitudeDMS[1], longitudeDMS[2], longitudeDirection)
-        : undefined;
+    // Bark image (optional)
+    let barkImageBlobClient: BlockBlobClient = null;
+    const barkImageParsedFile = getItemByName(files, "bark");
+    if (barkImageParsedFile) {
+      const barkImageTypeInfo = imageType(barkImageParsedFile.bufferFile);
+      const barkImageBlobName = `${uuidv4()}.${barkImageTypeInfo.ext}`;
+
+      barkImageBlobClient = containerClient.getBlockBlobClient(barkImageBlobName);
+      await barkImageBlobClient.uploadData(barkImageParsedFile.bufferFile, {
+        blobHTTPHeaders: { blobContentType: barkImageTypeInfo.mime },
+      });
+    }
 
     context.bindings.cosmosDbRes = JSON.stringify({
-      imageUrl: imageBlobClient.url,
-      thumbnailUrl: thumbnailBlobClient.url,
+      treeImageUrl: treeImageBlobClient.url,
+      treeThumbnailUrl: treeThumbnailBlobClient.url,
+      leafImageUrl: leafImageBlobClient.url,
+      barkImageUrl: barkImageBlobClient ? barkImageBlobClient.url : undefined,
+      species: getItemByName(fields, "species").value,
+      description: getItemByName(fields, "description").value,
+      perimeter: getItemByName(fields, "perimeter").value,
+      state: getItemByName(fields, "state").value,
+      stateDescription: getItemByName(fields, "state-description").value,
+      latLong: getItemByName(fields, "lat-long").value,
       userId: getUserId(context),
-      gpsCoordinates: {
-        latitude,
-        longitude,
-      },
     });
 
     context.log("HTTP trigger function processed a request.");
@@ -78,15 +98,64 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
     throw error;
   }
 };
-
 export default httpTrigger;
 
-const dmsToDD = (degrees: number, minutes: number, seconds: number, direction: string) => {
-  var dd = degrees + minutes / 60 + seconds / (60 * 60);
+const validateFiles = (files: ParsedFile[]): boolean => {
+  const acceptedFiles = ["tree", "leaf", "bark"];
+  const requiredFiles = ["tree", "leaf"];
 
-  if (direction === "S" || direction === "W") {
-    dd = -dd;
+  return validateItemsExistence<ParsedFile>(files, acceptedFiles, requiredFiles);
+};
+
+const validateFields = (fields: ParsedField[]): boolean => {
+  const requiredFields = ["species", "description", "perimeter", "state", "state-description", "lat-long"];
+
+  if (!validateItemsExistence<ParsedField>(fields, requiredFields, requiredFields)) {
+    return false;
   }
 
-  return dd;
+  let result = true;
+
+  for (const field of fields) {
+    switch (field.name) {
+      case "species":
+      case "state": {
+        result = validator.isUUID(field.value);
+        break;
+      }
+      case "perimeter": {
+        result = validator.isNumeric(field.value) && field.value > 0;
+        break;
+      }
+      case "lat-long": {
+        result = validator.isLatLong(field.value);
+        break;
+      }
+      default: {
+        result = !validator.isEmpty(field.value);
+      }
+    }
+
+    if (!result) {
+      break;
+    }
+  }
+
+  return result;
+};
+
+const validateItemsExistence = <T extends ParsedFile | ParsedField>(
+  items: T[],
+  acceptedNames: string[],
+  requiredNames: string[],
+): boolean => {
+  const itemNames = items.map((item: T) => item.name);
+
+  return (
+    itemNames.every((name) => acceptedNames.includes(name)) && requiredNames.every((name) => itemNames.includes(name))
+  );
+};
+
+const getItemByName = <T extends ParsedFile | ParsedField>(items: T[], name: string): T => {
+  return items.find((item) => item.name === name);
 };

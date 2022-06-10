@@ -8,5 +8,5 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,
   "cSpell.language": "en,pl",
-  "cSpell.words": ["devstoreaccount", "exif", "inne", "klon", "prestart", "uuidv"]
+  "cSpell.words": ["anzp", "devstoreaccount", "exif", "inne", "klon", "prestart", "uuidv"]
 }

@@ -7,7 +7,13 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
   const container = client.database(process.env.CosmosDbName).container("Trees");
 
   const querySpec = {
-    query: `SELECT t.imageUrl, t.gpsCoordinates
+    query: `SELECT t.treeImageUrl
+                ,t.leafImageUrl
+                ,t.barkImageUrl
+                ,t.latLong
+                ,t.state
+                ,t.stateDescription
+                ,t.description
               FROM Trees t
               WHERE t.userId = @userId
                 AND t.id = @id`,

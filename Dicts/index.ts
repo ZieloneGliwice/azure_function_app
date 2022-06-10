@@ -30,17 +30,18 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
   const container = database.container(containerName);
 
   if (containerResponse.statusCode === 201) {
-    const operations = createDictItemOperations("state", ["zdrowe", "chore", "inne", "nie wiem"]).concat(
-      createDictItemOperations("species", ["sosna", "wierzba", "klon", "inne", "nie wiem"]),
+    const operations = createDictItemOperations("state", ["zdrowe", "chore", "inne/nie wiem"]).concat(
+      createDictItemOperations("species", ["sosna", "wierzba", "klon", "inne/nie wiem"]),
     );
 
-    container.items.bulk(operations);
+    await container.items.bulk(operations);
   }
 
   const querySpec = {
-    query: `SELECT d.id, d.name
-            FROM Dicts d
-            WHERE d.type = @type`,
+    query: `SELECT d.id
+                ,d.name
+              FROM Dicts d
+              WHERE d.type = @type`,
     parameters: [
       {
         name: "@type",
