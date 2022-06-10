@@ -21,7 +21,6 @@
   },
   "devDependencies": {
     "@azure/functions": "^3.0.0",
-    "@types/multiparty": "^0.0.33",
     "@types/sharp": "^0.30.2",
     "@types/validator": "^13.7.3",
     "prettier": "^2.6.2",
