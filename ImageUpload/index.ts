@@ -11,6 +11,7 @@ import { ParsedField } from "@anzp/azure-function-multipart/dist/types/parsed-fi
 import validator from "validator";
 import { CosmosClient } from "@azure/cosmos";
 import { DictItem, Tree } from "../common/types";
+import * as NodeGeocoder from "node-geocoder";
 
 global.Blob = Blob as any;
 
@@ -29,9 +30,6 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
     if (!validateFields(fields)) {
       return endWithBadResponse(context);
     }
-
-    const speciesId = getParsedItemByName(fields, "species").value;
-    const stateId = getParsedItemByName(fields, "state").value;
 
     const cosmosClient = new CosmosClient(process.env.CosmosDbConnectionString);
     const cosmosContainer = cosmosClient.database(process.env.CosmosDbName).container("Dicts");
@@ -52,11 +50,11 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
       parameters: [
         {
           name: "@speciesId",
-          value: speciesId,
+          value: getParsedItemByName(fields, "species").value,
         },
         {
           name: "@stateId",
-          value: stateId,
+          value: getParsedItemByName(fields, "state").value,
         },
       ],
     };
@@ -66,6 +64,15 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
     if (dictItems.length !== 2) {
       return endWithBadResponse(context);
     }
+
+    const options: NodeGeocoder.OpenStreetMapOptions = {
+      provider: "openstreetmap",
+      email: "ggtempmail@gmail.com",
+    };
+
+    const geoCoder = NodeGeocoder(options);
+    const coordinates = getParsedItemByName(fields, "lat-long").value.split(",");
+    const geoCoderResponse = await geoCoder.reverse({ lat: coordinates[0], lon: coordinates[1] });
 
     const containerClient = new ContainerClient(
       `${process.env.BlobUrl}/images`,
@@ -127,6 +134,7 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
       state: getDictItemByType(dictItems, "state").name,
       stateDescription: getParsedItemByName(fields, "state-description").value,
       latLong: getParsedItemByName(fields, "lat-long").value,
+      address: geoCoderResponse[0].formattedAddress,
       userId: getUserId(context),
     };
 

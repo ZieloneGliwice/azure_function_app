@@ -15,5 +15,6 @@ export interface Tree {
   state: string;
   stateDescription: string;
   latLong: string;
+  address?: string;
   userId: string;
 }
