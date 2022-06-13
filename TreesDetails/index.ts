@@ -1,13 +1,19 @@
 import { CosmosClient } from "@azure/cosmos";
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import { getContainerSasUri, getUserId } from "../common";
+import { endWithNotFoundResponse, getContainerSasUri, getUserId } from "../common";
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
   const client = new CosmosClient(process.env.CosmosDbConnectionString);
-  const container = client.database("GreenGliwice").container("Trees");
+  const container = client.database(process.env.CosmosDbName).container("Trees");
 
   const querySpec = {
-    query: `SELECT t.imageUrl, t.gpsCoordinates
+    query: `SELECT t.treeImageUrl
+                ,t.leafImageUrl
+                ,t.barkImageUrl
+                ,t.latLong
+                ,t.state
+                ,t.stateDescription
+                ,t.description
               FROM Trees t
               WHERE t.userId = @userId
                 AND t.id = @id`,
@@ -34,12 +40,3 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
   };
 };
 export default httpTrigger;
-
-const endWithNotFoundResponse = (context: Context, message = "Not Found") => {
-  context.log.error(message);
-  context.res = {
-    status: 404,
-    body: message,
-  };
-  context.done();
-};
