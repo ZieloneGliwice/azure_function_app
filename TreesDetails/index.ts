@@ -11,6 +11,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 ,t.leafImageUrl
                 ,t.barkImageUrl
                 ,t.latLong
+                ,t.address
                 ,t.state
                 ,t.stateDescription
                 ,t.description
