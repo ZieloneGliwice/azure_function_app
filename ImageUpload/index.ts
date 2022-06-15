@@ -67,7 +67,7 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
 
     const options: NodeGeocoder.OpenStreetMapOptions = {
       provider: "openstreetmap",
-      email: "ggtempmail@gmail.com",
+      email: process.env.Email,
     };
 
     const geoCoder = NodeGeocoder(options);
@@ -127,7 +127,7 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
       treeImageUrl: treeImageBlobClient.url,
       treeThumbnailUrl: treeThumbnailBlobClient.url,
       leafImageUrl: leafImageBlobClient.url,
-      barkImageUrl: barkImageBlobClient ? barkImageBlobClient.url : undefined,
+      barkImageUrl: barkImageBlobClient?.url,
       species: getDictItemByType(dictItems, "species").name,
       description: getParsedItemByName(fields, "description").value,
       perimeter: getParsedItemByName(fields, "perimeter").value,
