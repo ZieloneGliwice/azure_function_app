@@ -23,5 +23,5 @@
       "direction": "out"
     }
   ],
-  "scriptFile": "../dist/ImageUpload/index.js"
+  "scriptFile": "../dist/CreateTree/index.js"
 }

@@ -1,6 +1,7 @@
-import { CosmosClient, CreateOperationInput } from "@azure/cosmos";
+import { CreateOperationInput } from "@azure/cosmos";
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import { endWithBadResponse, getContainerSasUri, getUserId } from "../common";
+import { endWithBadResponse } from "../common";
+import { cosmosDbClient, dictsCollection } from "../common/connections";
 
 const dictTypeNames = ["species", "state"] as const;
 type DictType = typeof dictTypeNames[number];
@@ -14,27 +15,22 @@ interface DictItemDefinition {
 const containerName = "Dicts";
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
-  const client = new CosmosClient(process.env.CosmosDbConnectionString);
-  const database = client.database(process.env.CosmosDbName);
-
   if (!dictTypeNames.includes(req.params.type as DictType)) {
     return endWithBadResponse(context);
   }
 
-  const containerResponse = await database.containers.createIfNotExists({
+  const containerResponse = await cosmosDbClient.containers.createIfNotExists({
     id: containerName,
     partitionKey: "/type",
     uniqueKeyPolicy: { uniqueKeys: [{ paths: ["/name"] }] },
   });
-
-  const container = database.container(containerName);
 
   if (containerResponse.statusCode === 201) {
     const operations = createDictItemOperations("state", ["zdrowe", "chore", "inne/nie wiem"]).concat(
       createDictItemOperations("species", ["sosna", "wierzba", "klon", "inne/nie wiem"]),
     );
 
-    await container.items.bulk(operations);
+    await dictsCollection.items.bulk(operations);
   }
 
   const querySpec = {
@@ -50,7 +46,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
     ],
   };
 
-  const { resources } = await container.items.query(querySpec).fetchAll();
+  const { resources } = await dictsCollection.items.query(querySpec).fetchAll();
 
   context.res = {
     body: resources,
