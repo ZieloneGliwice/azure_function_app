@@ -6,7 +6,7 @@
       "direction": "in",
       "name": "req",
       "methods": ["get"],
-      "route": "Dicts/{type}"
+      "route": "dicts/{type}"
     },
     {
       "type": "http",
@@ -14,5 +14,5 @@
       "name": "res"
     }
   ],
-  "scriptFile": "../dist/Dicts/index.js"
+  "scriptFile": "../dist/dicts/index.js"
 }
