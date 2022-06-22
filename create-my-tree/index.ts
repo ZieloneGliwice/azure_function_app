@@ -8,12 +8,32 @@ import { endWithBadResponse, getUserId } from "../common";
 import parseMultipartFormData from "@anzp/azure-function-multipart";
 import { ParsedFile } from "@anzp/azure-function-multipart/dist/types/parsed-file.type";
 import { ParsedField } from "@anzp/azure-function-multipart/dist/types/parsed-field.type";
-import validator from "validator";
-import { DictItem, Tree } from "../common/types";
 import * as NodeGeocoder from "node-geocoder";
 import { blobContainerClient, dictsCollection } from "../common/connections";
+import { validateFields, validateFiles } from "./validation";
 
 global.Blob = Blob as any;
+
+interface DictItem {
+  type: string;
+  name: string;
+  id: string;
+}
+
+interface Tree {
+  treeImageUrl: string;
+  treeThumbnailUrl: string;
+  leafImageUrl: string;
+  barkImageUrl?: string;
+  species: string;
+  description: string;
+  perimeter: number;
+  state: string;
+  stateDescription: string;
+  latLong: string;
+  address?: string;
+  userId: string;
+}
 
 const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): Promise<void> => {
   try {
@@ -35,15 +55,15 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
       query: `SELECT d.id
                   ,d.name
                   ,d.type
-                FROM Dicts d
-                WHERE (
-                    d.type = "state"
-                    AND d.id = @stateId
-                    )
-                  OR (
-                    d.type = "species"
-                    AND d.id = @speciesId
-                    )`,
+              FROM Dicts d
+              WHERE (
+                  d.type = "state"
+                  AND d.id = @stateId
+                  )
+                OR (
+                  d.type = "species"
+                  AND d.id = @speciesId
+                  )`,
       parameters: [
         {
           name: "@speciesId",
@@ -122,7 +142,7 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
       barkImageUrl: barkImageBlobClient?.url,
       species: getDictItemByType(dictItems, "species").name,
       description: getParsedItemByName(fields, "description").value,
-      perimeter: getParsedItemByName(fields, "perimeter").value,
+      perimeter: Number(getParsedItemByName(fields, "perimeter").value),
       state: getDictItemByType(dictItems, "state").name,
       stateDescription: getParsedItemByName(fields, "state-description").value,
       latLong: getParsedItemByName(fields, "lat-long").value,
@@ -132,7 +152,7 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
 
     context.bindings.cosmosDbRes = JSON.stringify(newTree);
 
-    context.log("HTTP trigger function processed a request.");
+    context.log("Tree successfully created");
     context.done();
   } catch (error) {
     context.log.error(error.message);
@@ -140,66 +160,6 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
   }
 };
 export default httpTrigger;
-
-const validateFiles = (files: ParsedFile[]): boolean => {
-  const acceptedFiles = ["tree", "leaf", "bark"];
-  const requiredFiles = ["tree", "leaf"];
-
-  return validateItemsExistence<ParsedFile>(files, requiredFiles, acceptedFiles);
-};
-
-const validateFields = (fields: ParsedField[]): boolean => {
-  const requiredFields = ["species", "description", "perimeter", "state", "state-description", "lat-long"];
-
-  if (!validateItemsExistence<ParsedField>(fields, requiredFields)) {
-    return false;
-  }
-
-  let result = true;
-
-  for (const field of fields) {
-    switch (field.name) {
-      case "species":
-      case "state": {
-        result = validator.isUUID(field.value);
-        break;
-      }
-      case "perimeter": {
-        result = validator.isNumeric(field.value) && field.value > 0;
-        break;
-      }
-      case "lat-long": {
-        result = validator.isLatLong(field.value);
-        break;
-      }
-      default: {
-        result = !validator.isEmpty(field.value);
-      }
-    }
-
-    if (!result) {
-      break;
-    }
-  }
-
-  return result;
-};
-
-const validateItemsExistence = <T extends ParsedFile | ParsedField>(
-  items: T[],
-  requiredNames: string[],
-  acceptedNames?: string[],
-): boolean => {
-  const itemNames = items.map((item: T) => item.name);
-
-  if (!acceptedNames) {
-    acceptedNames = requiredNames;
-  }
-
-  return (
-    itemNames.every((name) => acceptedNames.includes(name)) && requiredNames.every((name) => itemNames.includes(name))
-  );
-};
 
 const getParsedItemByName = <T extends ParsedFile | ParsedField>(items: T[], name: string): T => {
   return items.find((item) => item.name === name);

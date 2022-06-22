@@ -9,8 +9,8 @@ const httpTrigger: AzureFunction = async function (context: Context): Promise<vo
                 ,t._ts
                 ,t.latLong
                 ,t.species
-              FROM Trees t
-              WHERE t.userId = @userId`,
+            FROM Trees t
+            WHERE t.userId = @userId`,
     parameters: [
       {
         name: "@userId",
