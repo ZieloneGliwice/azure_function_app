@@ -65,8 +65,6 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
     context.log.error(error.message);
     throw error;
   }
-
-  context.done();
 };
 export default httpTrigger;
 
