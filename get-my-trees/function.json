@@ -5,6 +5,7 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
+      "route": "users/me/trees",
       "methods": ["get"]
     },
     {
@@ -13,5 +14,5 @@
       "name": "res"
     }
   ],
-  "scriptFile": "../dist/UsersTrees/index.js"
+  "scriptFile": "../dist/get-my-trees/index.js"
 }

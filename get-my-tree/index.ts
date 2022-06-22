@@ -1,11 +1,8 @@
-import { CosmosClient } from "@azure/cosmos";
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
 import { endWithNotFoundResponse, getContainerSasUri, getUserId } from "../common";
+import { treesCollection } from "../common/connections";
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
-  const client = new CosmosClient(process.env.CosmosDbConnectionString);
-  const container = client.database(process.env.CosmosDbName).container("Trees");
-
   const querySpec = {
     query: `SELECT t.treeImageUrl
                 ,t.leafImageUrl
@@ -15,9 +12,9 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 ,t.state
                 ,t.stateDescription
                 ,t.description
-              FROM Trees t
-              WHERE t.userId = @userId
-                AND t.id = @id`,
+            FROM Trees t
+            WHERE t.userId = @userId
+              AND t.id = @id`,
     parameters: [
       {
         name: "@userId",
@@ -30,7 +27,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
     ],
   };
 
-  const { resources } = await container.items.query(querySpec).fetchAll();
+  const { resources } = await treesCollection.items.query(querySpec).fetchAll();
 
   if (resources.length === 0) {
     return endWithNotFoundResponse(context);

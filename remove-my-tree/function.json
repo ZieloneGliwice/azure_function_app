@@ -5,8 +5,8 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "methods": ["get"],
-      "route": "dicts/{type}"
+      "route": "users/me/trees/{id}",
+      "methods": ["delete"]
     },
     {
       "type": "http",
@@ -14,5 +14,5 @@
       "name": "res"
     }
   ],
-  "scriptFile": "../dist/dicts/index.js"
+  "scriptFile": "../dist/remove-my-tree/index.js"
 }
