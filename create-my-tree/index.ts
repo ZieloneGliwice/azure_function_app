@@ -4,7 +4,7 @@ import * as sharp from "sharp";
 import imageType from "image-type";
 import { v4 as uuidv4 } from "uuid";
 import { Blob } from "node:buffer";
-import { endWithBadResponse, getUserId, healthTreeName } from "../common";
+import { endWithBadResponse, getUserId, healthyTreeName } from "../common";
 import parseMultipartFormData from "@anzp/azure-function-multipart";
 import { ParsedFile } from "@anzp/azure-function-multipart/dist/types/parsed-file.type";
 import { ParsedField } from "@anzp/azure-function-multipart/dist/types/parsed-field.type";
@@ -92,9 +92,9 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
     const stateDictItem = dictItems.find((dictItem: DictItem) => dictItem.type === "state");
 
     if (
-      (badStateField && stateDictItem.name === healthTreeName) ||
-      (stateDictItem.name === healthTreeName && dictItems.length !== 2) ||
-      (stateDictItem.name !== healthTreeName && dictItems.length !== 3)
+      (badStateField && stateDictItem.name === healthyTreeName) ||
+      (stateDictItem.name === healthyTreeName && dictItems.length !== 2) ||
+      (stateDictItem.name !== healthyTreeName && dictItems.length !== 3)
     ) {
       return endWithBadResponse(context);
     }

@@ -1,6 +1,6 @@
 import { CreateOperationInput } from "@azure/cosmos";
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import { endWithBadResponse, healthTreeName } from "../common";
+import { endWithBadResponse, healthyTreeName } from "../common";
 import { cosmosDbClient, dictsCollection } from "../common/connections";
 
 const dictTypeNames = ["species", "state", "badState"] as const;
@@ -26,7 +26,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
   });
 
   if (containerResponse.statusCode === 201) {
-    const operations = createDictItemOperations("state", [healthTreeName, "chore/uszkodzone"])
+    const operations = createDictItemOperations("state", [healthyTreeName, "chore/uszkodzone"])
       .concat(createDictItemOperations("badState", ["złamane", "ścięte", "uschnięte", "szkodniki", "inne"]))
       .concat(
         createDictItemOperations("species", [
@@ -40,7 +40,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
           "kasztanowiec",
           "klon",
           "klon jesionolistny",
-          "kipa",
+          "lipa",
           "platan",
           "robinia",
           "topola",
