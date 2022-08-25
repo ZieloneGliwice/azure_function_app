@@ -4,7 +4,7 @@ import * as sharp from "sharp";
 import imageType from "image-type";
 import { v4 as uuidv4 } from "uuid";
 import { Blob } from "node:buffer";
-import { endWithBadResponse, getUserId } from "../common";
+import { endWithBadResponse, getUserId, healthyTreeName } from "../common";
 import parseMultipartFormData from "@anzp/azure-function-multipart";
 import { ParsedFile } from "@anzp/azure-function-multipart/dist/types/parsed-file.type";
 import { ParsedField } from "@anzp/azure-function-multipart/dist/types/parsed-field.type";
@@ -29,6 +29,7 @@ interface Tree {
   description: string;
   perimeter: number;
   state: string;
+  badState?: string;
   stateDescription: string;
   latLong: string;
   address?: string;
@@ -51,6 +52,8 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
       return endWithBadResponse(context);
     }
 
+    const badStateField = getParsedItemByName(fields, "bad-state");
+
     const querySpec = {
       query: `SELECT d.id
                   ,d.name
@@ -59,6 +62,10 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
               WHERE (
                   d.type = "state"
                   AND d.id = @stateId
+                  )
+                OR (
+                  d.type = "badState"
+                  AND d.id = @badStateId
                   )
                 OR (
                   d.type = "species"
@@ -73,12 +80,22 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
           name: "@stateId",
           value: getParsedItemByName(fields, "state").value,
         },
+        {
+          name: "@badStateId",
+          value: badStateField?.value,
+        },
       ],
     };
 
     const { resources: dictItems } = await dictsCollection.items.query<DictItem>(querySpec).fetchAll();
 
-    if (dictItems.length !== 2) {
+    const stateDictItem = dictItems.find((dictItem: DictItem) => dictItem.type === "state");
+
+    if (
+      (badStateField && stateDictItem.name === healthyTreeName) ||
+      (stateDictItem.name === healthyTreeName && dictItems.length !== 2) ||
+      (stateDictItem.name !== healthyTreeName && dictItems.length !== 3)
+    ) {
       return endWithBadResponse(context);
     }
 
@@ -144,6 +161,7 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
       description: getParsedItemByName(fields, "description").value,
       perimeter: Number(getParsedItemByName(fields, "perimeter").value),
       state: getDictItemByType(dictItems, "state").name,
+      badState: getDictItemByType(dictItems, "bad-state")?.name,
       stateDescription: getParsedItemByName(fields, "state-description").value,
       latLong: getParsedItemByName(fields, "lat-long").value,
       address: geoCoderResponse[0].formattedAddress,
