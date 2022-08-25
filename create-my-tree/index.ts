@@ -70,7 +70,7 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
                 OR (
                   d.type = "species"
                   AND d.id = @speciesId
-                  )  `,
+                  )`,
       parameters: [
         {
           name: "@speciesId",
