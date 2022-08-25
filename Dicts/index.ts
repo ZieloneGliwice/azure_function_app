@@ -1,9 +1,9 @@
 import { CreateOperationInput } from "@azure/cosmos";
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import { endWithBadResponse } from "../common";
+import { endWithBadResponse, healthTreeName } from "../common";
 import { cosmosDbClient, dictsCollection } from "../common/connections";
 
-const dictTypeNames = ["species", "state"] as const;
+const dictTypeNames = ["species", "state", "badState"] as const;
 type DictType = typeof dictTypeNames[number];
 
 interface DictItemDefinition {
@@ -26,9 +26,45 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
   });
 
   if (containerResponse.statusCode === 201) {
-    const operations = createDictItemOperations("state", ["zdrowe", "chore", "inne/nie wiem"]).concat(
-      createDictItemOperations("species", ["sosna", "wierzba", "klon", "inne/nie wiem"]),
-    );
+    const operations = createDictItemOperations("state", [healthTreeName, "chore/uszkodzone"])
+      .concat(createDictItemOperations("badState", ["złamane", "ścięte", "uschnięte", "szkodniki", "inne"]))
+      .concat(
+        createDictItemOperations("species", [
+          "brzoza",
+          "buk",
+          "dąb",
+          "dąb czerwony",
+          "grab",
+          "głóg",
+          "jarząb",
+          "kasztanowiec",
+          "klon",
+          "klon jesionolistny",
+          "kipa",
+          "platan",
+          "robinia",
+          "topola",
+          "wierzba",
+          "wiąz",
+          "śliwa",
+          "jabłoń",
+          "grusza",
+          "czeremcha",
+          "świerk",
+          "jodła",
+          "modrzew",
+          "sosna",
+          "surmia katalpa",
+          "daglezja",
+          "cis",
+          "glediczja",
+          "miłorząb",
+          "ambrowiec amerykański",
+          "tulipanowiec",
+          "magnolia ",
+          "inne/nie wiem",
+        ]),
+      );
 
     await dictsCollection.items.bulk(operations);
   }

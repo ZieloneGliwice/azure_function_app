@@ -3,16 +3,17 @@ import { ParsedField } from "@anzp/azure-function-multipart/dist/types/parsed-fi
 import { ParsedFile } from "@anzp/azure-function-multipart/dist/types/parsed-file.type";
 
 export const validateFiles = (files: ParsedFile[]): boolean => {
-  const acceptedFiles = ["tree", "leaf", "bark"];
   const requiredFiles = ["tree", "leaf"];
+  const acceptedFiles = [...requiredFiles, "bark"];
 
   return validateItemsExistence<ParsedFile>(files, requiredFiles, acceptedFiles);
 };
 
 export const validateFields = (fields: ParsedField[]): boolean => {
   const requiredFields = ["species", "description", "perimeter", "state", "state-description", "lat-long"];
+  const acceptedFiles = [...requiredFields, "bad-state"];
 
-  if (!validateItemsExistence<ParsedField>(fields, requiredFields)) {
+  if (!validateItemsExistence<ParsedField>(fields, requiredFields, acceptedFiles)) {
     return false;
   }
 
@@ -21,7 +22,8 @@ export const validateFields = (fields: ParsedField[]): boolean => {
   for (const field of fields) {
     switch (field.name) {
       case "species":
-      case "state": {
+      case "state":
+      case "bad-state": {
         result = validator.isUUID(field.value);
         break;
       }

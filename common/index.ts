@@ -8,6 +8,8 @@ import {
 
 const testUserId = "testUserId";
 
+export const healthTreeName = "zdrowe";
+
 export const getContainerSasUri = () => {
   const sharedKeyCredential = new StorageSharedKeyCredential(process.env.BlobAccountName, process.env.BlobAccountKey);
 
