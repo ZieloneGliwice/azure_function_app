@@ -29,7 +29,7 @@ interface Tree {
   description: string;
   perimeter: number;
   state: string;
-  badState: string;
+  badState?: string;
   stateDescription: string;
   latLong: string;
   address?: string;
