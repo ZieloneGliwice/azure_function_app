@@ -16,7 +16,7 @@ const containerName = "Dicts";
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
   if (!dictTypeNames.includes(req.params.type as DictType)) {
-    return endWithBadResponse(context);
+    return endWithBadResponse(context, "Invalid type");
   }
 
   const containerResponse = await cosmosDbClient.containers.createIfNotExists({

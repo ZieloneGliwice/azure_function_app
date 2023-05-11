@@ -39,17 +39,21 @@ interface Tree {
 const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): Promise<void> => {
   try {
     if (!req.body) {
-      return endWithBadResponse(context);
+      return endWithBadResponse(context, "No body");
     }
 
     const { fields, files } = await parseMultipartFormData(req);
 
+    if (!files || files.length === 0) {
+      return endWithBadResponse(context, "Files not found");
+    }
+
     if (!validateFiles(files)) {
-      return endWithBadResponse(context);
+      return endWithBadResponse(context, "Invalid files");
     }
 
     if (!validateFields(fields)) {
-      return endWithBadResponse(context);
+      return endWithBadResponse(context, "Invalid fields");
     }
 
     const badStateField = getParsedItemByName(fields, "bad-state");
@@ -92,11 +96,12 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
     const stateDictItem = dictItems.find((dictItem: DictItem) => dictItem.type === "state");
 
     if (
+      !stateDictItem ||
       (badStateField && stateDictItem.name === healthyTreeName) ||
       (stateDictItem.name === healthyTreeName && dictItems.length !== 2) ||
       (stateDictItem.name !== healthyTreeName && dictItems.length !== 3)
     ) {
-      return endWithBadResponse(context);
+      return endWithBadResponse(context, "Invalid state");
     }
 
     const options: NodeGeocoder.OpenStreetMapOptions = {

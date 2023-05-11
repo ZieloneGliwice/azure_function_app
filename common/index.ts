@@ -27,11 +27,12 @@ export const getUserId = (context: Context) => {
   return process.env.Environment === "Development" ? testUserId : context.req.headers["x-ms-client-principal-id"];
 };
 
-export const endWithBadResponse = (context: Context, message = "Bad Request") => {
-  context.log.error(message);
+export const endWithBadResponse = (context: Context, message: string) => {
+  const body = `Bad Request: ${message}`;
+  context.log.error(body);
   context.res = {
     status: 400,
-    body: message,
+    body,
   };
   context.done();
 };
