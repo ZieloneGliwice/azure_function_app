@@ -4,7 +4,7 @@ import * as sharp from "sharp";
 import imageType from "image-type";
 import { v4 as uuidv4 } from "uuid";
 import { Blob } from "node:buffer";
-import { endWithBadResponse, getUserId, healthyTreeName } from "../common";
+import { endWithBadResponse, getUserId, healthyTreeName, unhealthyTreeName } from "../common";
 import parseMultipartFormData from "@anzp/azure-function-multipart";
 import { ParsedFile } from "@anzp/azure-function-multipart/dist/types/parsed-file.type";
 import { ParsedField } from "@anzp/azure-function-multipart/dist/types/parsed-field.type";
@@ -32,28 +32,28 @@ interface Tree {
   badState?: string;
   stateDescription: string;
   latLong: string;
-  address?: string;
+  geocoderInfo?: NodeGeocoder.Entry;
   userId: string;
 }
 
 const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): Promise<void> => {
   try {
     if (!req.body) {
-      return endWithBadResponse(context, "No body");
+      return endWithBadResponse(context, "no body");
     }
 
     const { fields, files } = await parseMultipartFormData(req);
 
     if (!files || files.length === 0) {
-      return endWithBadResponse(context, "Files not found");
+      return endWithBadResponse(context, "files not found");
     }
 
     if (!validateFiles(files)) {
-      return endWithBadResponse(context, "Invalid files");
+      return endWithBadResponse(context, "invalid files");
     }
 
     if (!validateFields(fields)) {
-      return endWithBadResponse(context, "Invalid fields");
+      return endWithBadResponse(context, "invalid fields");
     }
 
     const badStateField = getParsedItemByName(fields, "bad-state");
@@ -93,15 +93,30 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
 
     const { resources: dictItems } = await dictsCollection.items.query<DictItem>(querySpec).fetchAll();
 
-    const stateDictItem = dictItems.find((dictItem: DictItem) => dictItem.type === "state");
+    if (!getDictItemByType(dictItems, "species")) {
+      return endWithBadResponse(context, "there is no species dict item related with given id");
+    }
 
-    if (
-      !stateDictItem ||
-      (badStateField && stateDictItem.name === healthyTreeName) ||
-      (stateDictItem.name === healthyTreeName && dictItems.length !== 2) ||
-      (stateDictItem.name !== healthyTreeName && dictItems.length !== 3)
-    ) {
-      return endWithBadResponse(context, "Invalid state");
+    const stateDictItem = getDictItemByType(dictItems, "state");
+
+    if (!stateDictItem) {
+      return endWithBadResponse(context, "there is no state dict item related with given id");
+    }
+
+    if (stateDictItem.name === healthyTreeName) {
+      if (badStateField) {
+        return endWithBadResponse(context, "bad-state field should not be provided for healthy tree");
+      }
+    }
+
+    if (stateDictItem.name === unhealthyTreeName) {
+      if (!badStateField) {
+        return endWithBadResponse(context, "bad-state field should be provided for unhealthy tree");
+      }
+
+      if (!getDictItemByType(dictItems, "badState")) {
+        return endWithBadResponse(context, "there is no bad state dict item related with given id");
+      }
     }
 
     const options: NodeGeocoder.OpenStreetMapOptions = {
@@ -111,7 +126,11 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
 
     const geoCoder = NodeGeocoder(options);
     const coordinates = getParsedItemByName(fields, "lat-long").value.split(",");
-    const geoCoderResponse = await geoCoder.reverse({ lat: coordinates[0], lon: coordinates[1] });
+    const geoCoderResponse = await geoCoder.reverse({
+      lat: coordinates[0],
+      lon: coordinates[1],
+      "accept-language": "pl",
+    } as any);
 
     await blobContainerClient.createIfNotExists();
 
@@ -166,10 +185,10 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
       description: getParsedItemByName(fields, "description").value,
       perimeter: Number(getParsedItemByName(fields, "perimeter").value),
       state: getDictItemByType(dictItems, "state").name,
-      badState: getDictItemByType(dictItems, "bad-state")?.name,
-      stateDescription: getParsedItemByName(fields, "state-description").value,
+      badState: getDictItemByType(dictItems, "badState")?.name,
+      stateDescription: getParsedItemByName(fields, "state-description")?.value,
       latLong: getParsedItemByName(fields, "lat-long").value,
-      address: geoCoderResponse[0].formattedAddress,
+      geocoderInfo: geoCoderResponse[0],
       userId: getUserId(context),
     };
 

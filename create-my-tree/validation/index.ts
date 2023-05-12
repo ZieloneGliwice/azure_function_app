@@ -10,8 +10,8 @@ export const validateFiles = (files: ParsedFile[]): boolean => {
 };
 
 export const validateFields = (fields: ParsedField[]): boolean => {
-  const requiredFields = ["species", "description", "perimeter", "state", "state-description", "lat-long"];
-  const acceptedFiles = [...requiredFields, "bad-state"];
+  const requiredFields = ["species", "description", "perimeter", "state", "lat-long"];
+  const acceptedFiles = [...requiredFields, "state-description", "bad-state"];
 
   if (!validateItemsExistence<ParsedField>(fields, requiredFields, acceptedFiles)) {
     return false;
