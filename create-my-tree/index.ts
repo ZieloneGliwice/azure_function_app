@@ -103,10 +103,8 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
       return endWithBadResponse(context, "there is no state dict item related with given id");
     }
 
-    if (stateDictItem.name === healthyTreeName) {
-      if (badStateField) {
-        return endWithBadResponse(context, "bad-state field should not be provided for healthy tree");
-      }
+    if (stateDictItem.name === healthyTreeName && badStateField) {
+      return endWithBadResponse(context, "bad-state field should not be provided for healthy tree");
     }
 
     if (stateDictItem.name === unhealthyTreeName) {
@@ -130,7 +128,7 @@ const httpTrigger: AzureFunction = async (context: Context, req: HttpRequest): P
       lat: coordinates[0],
       lon: coordinates[1],
       "accept-language": "pl",
-    } as any);
+    } as unknown as NodeGeocoder.Location);
 
     await blobContainerClient.createIfNotExists();
 

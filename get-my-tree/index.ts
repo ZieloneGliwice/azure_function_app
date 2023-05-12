@@ -7,12 +7,14 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
     query: `SELECT t.treeImageUrl
                 ,t.leafImageUrl
                 ,t.barkImageUrl
-                ,t.latLong
-                ,t.address
-                ,t.state
-                ,t.badState
-                ,t.stateDescription
+                ,t.species
                 ,t.description
+                ,t.perimeter
+                ,t.state
+                ,t.stateDescription
+                ,t.badState
+                ,t.latLong
+                ,t.geocoderInfo
             FROM Trees t
             WHERE t.userId = @userId
               AND t.id = @id`,
