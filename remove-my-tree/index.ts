@@ -1,5 +1,5 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import { endWithNotFoundResponse, getUserId } from "../common";
+import { endWithNotFoundResponse, getBlobContainerName, getUserId } from "../common";
 import { blobContainerClient, treesCollection } from "../common/connections";
 
 interface Tree {
@@ -69,5 +69,5 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
 export default httpTrigger;
 
 const getBlobName = (blobUrl: string): string => {
-  return blobUrl.split("images/").pop();
+  return blobUrl.split(`${getBlobContainerName()}/`).pop();
 };
