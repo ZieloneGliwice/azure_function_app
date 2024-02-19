@@ -1,0 +1,28 @@
+{
+  "bindings": [
+    {
+      "authLevel": "anonymous",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "route": "leaderboard/new",
+      "methods": ["post"]
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "res"
+    },
+    {
+      "name": "cosmosDbRes",
+      "type": "cosmosDB",
+      "databaseName": "GreenGliwice",
+      "collectionName": "Leaderboard",
+      "createIfNotExists": true,
+      "partitionKey": "/userId",
+      "connectionStringSetting": "CosmosDbConnectionString",
+      "direction": "out"
+    }
+  ],
+  "scriptFile": "../dist/create-leaderboard-entry/index.js"
+}
