@@ -8,6 +8,8 @@ export const dictsCollection = cosmosDbClient.container("Dicts");
 
 export const treesCollection = cosmosDbClient.container("Trees");
 
+export const leaderboardCollection = cosmosDbClient.container("Leaderboard");
+
 export const blobContainerClient = new ContainerClient(
   `${process.env.BlobUrl}/${getBlobContainerName()}`,
   new StorageSharedKeyCredential(process.env.BlobAccountName, process.env.BlobAccountKey),
