@@ -5,7 +5,7 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "route": "users/me/trees/delete",
+      "route": "users/me/delete",
       "methods": ["delete"]
     },
     {
@@ -14,5 +14,5 @@
       "name": "res"
     }
   ],
-  "scriptFile": "../dist/remove-all-my-trees/index.js"
+  "scriptFile": "../dist/remove-my-data/index.js"
 }
